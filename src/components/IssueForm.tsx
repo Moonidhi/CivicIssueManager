@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { Send, Upload, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { Issue } from '../types';
+import { storage, db } from '../firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 interface IssueFormProps {
   onSubmit: (issue: Omit<Issue, 'id' | 'created_at' | 'updated_at'>) => void;
@@ -28,12 +30,24 @@ export default function IssueForm({ onSubmit, onCancel }: IssueFormProps) {
   const [location, setLocation] = useState('');
   const [priority, setPriority] = useState<Issue['priority']>('medium');
   const [photoUrls, setPhotoUrls] = useState<string[]>([]);
-  const [photoInput, setPhotoInput] = useState('');
+  const [uploading, setUploading] = useState(false);
 
-  const handleAddPhoto = () => {
-    if (photoInput.trim() && photoUrls.length < 5) {
-      setPhotoUrls([...photoUrls, photoInput.trim()]);
-      setPhotoInput('');
+  // Upload a file to Firebase Storage
+  const handleFileUpload = async (file: File) => {
+    if (!file) return;
+    if (photoUrls.length >= 5) return alert('Maximum 5 photos allowed.');
+
+    try {
+      setUploading(true);
+      const storageRef = ref(storage, `issues/${Date.now()}_${file.name}`);
+      await uploadBytes(storageRef, file);
+      const url = await getDownloadURL(storageRef);
+      setPhotoUrls([...photoUrls, url]);
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      alert('Failed to upload photo.');
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -71,8 +85,8 @@ export default function IssueForm({ onSubmit, onCancel }: IssueFormProps) {
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            className="w-full px-4 py-3 rounded-lg border border-neutral-300 focus:ring-2 focus:ring-primary focus:border-transparent transition-all outline-none"
             placeholder="Brief description of the issue"
+            className="w-full px-4 py-3 rounded-lg border border-neutral-300 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
             required
           />
         </div>
@@ -85,8 +99,8 @@ export default function IssueForm({ onSubmit, onCancel }: IssueFormProps) {
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             rows={4}
-            className="w-full px-4 py-3 rounded-lg border border-neutral-300 focus:ring-2 focus:ring-primary focus:border-transparent transition-all outline-none resize-none"
             placeholder="Provide detailed information about the issue"
+            className="w-full px-4 py-3 rounded-lg border border-neutral-300 focus:ring-2 focus:ring-primary focus:border-transparent outline-none resize-none transition-all"
             required
           />
         </div>
@@ -99,7 +113,7 @@ export default function IssueForm({ onSubmit, onCancel }: IssueFormProps) {
             <select
               value={category}
               onChange={(e) => setCategory(e.target.value as Issue['category'])}
-              className="w-full px-4 py-3 rounded-lg border border-neutral-300 focus:ring-2 focus:ring-primary focus:border-transparent transition-all outline-none"
+              className="w-full px-4 py-3 rounded-lg border border-neutral-300 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
             >
               {categories.map((cat) => (
                 <option key={cat} value={cat}>
@@ -116,7 +130,7 @@ export default function IssueForm({ onSubmit, onCancel }: IssueFormProps) {
             <select
               value={priority}
               onChange={(e) => setPriority(e.target.value as Issue['priority'])}
-              className="w-full px-4 py-3 rounded-lg border border-neutral-300 focus:ring-2 focus:ring-primary focus:border-transparent transition-all outline-none"
+              className="w-full px-4 py-3 rounded-lg border border-neutral-300 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
             >
               {priorities.map((pri) => (
                 <option key={pri} value={pri}>
@@ -135,8 +149,8 @@ export default function IssueForm({ onSubmit, onCancel }: IssueFormProps) {
             type="text"
             value={location}
             onChange={(e) => setLocation(e.target.value)}
-            className="w-full px-4 py-3 rounded-lg border border-neutral-300 focus:ring-2 focus:ring-primary focus:border-transparent transition-all outline-none"
             placeholder="Street address or landmark"
+            className="w-full px-4 py-3 rounded-lg border border-neutral-300 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
             required
           />
         </div>
@@ -145,18 +159,18 @@ export default function IssueForm({ onSubmit, onCancel }: IssueFormProps) {
           <label className="block text-sm font-medium text-neutral-700 mb-2">
             Photos (optional)
           </label>
-          <div className="flex gap-2">
+          <div className="flex gap-2 mb-2">
             <input
-              type="url"
-              value={photoInput}
-              onChange={(e) => setPhotoInput(e.target.value)}
-              className="flex-1 px-4 py-3 rounded-lg border border-neutral-300 focus:ring-2 focus:ring-primary focus:border-transparent transition-all outline-none"
-              placeholder="Photo URL from Pexels or other source"
+              type="file"
+              accept="image/*"
+              onChange={(e) => e.target.files && handleFileUpload(e.target.files[0])}
+              disabled={uploading}
+              className="flex-1 px-4 py-3 rounded-lg border border-neutral-300 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
             />
             <button
               type="button"
-              onClick={handleAddPhoto}
-              className="px-6 py-3 bg-neutral-200 hover:bg-neutral-300 text-neutral-700 rounded-lg transition-all"
+              onClick={() => {}}
+              className="px-6 py-3 bg-neutral-200 text-neutral-700 rounded-lg transition-all"
             >
               <Upload className="w-5 h-5" />
             </button>
