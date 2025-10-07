@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { Send, Upload, X } from 'lucide-react';
+import { Send, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { Issue } from '../types';
-import { storage, db } from '../firebase';
+import { storage } from '../firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 interface IssueFormProps {
@@ -32,7 +32,7 @@ export default function IssueForm({ onSubmit, onCancel }: IssueFormProps) {
   const [photoUrls, setPhotoUrls] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
 
-  // Upload a file to Firebase Storage
+  // Upload photo to Firebase Storage
   const handleFileUpload = async (file: File) => {
     if (!file) return;
     if (photoUrls.length >= 5) return alert('Maximum 5 photos allowed.');
@@ -58,6 +58,7 @@ export default function IssueForm({ onSubmit, onCancel }: IssueFormProps) {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
+    if (uploading) return alert('Please wait for photo upload to finish.');
 
     onSubmit({
       user_id: user.id,
@@ -73,14 +74,13 @@ export default function IssueForm({ onSubmit, onCancel }: IssueFormProps) {
   };
 
   return (
-    <div className="bg-white/90 backdrop-blur-lg rounded-2xl shadow-2xl p-8 animate-scaleIn">
+    <div className="bg-white/90 backdrop-blur-lg rounded-2xl shadow-2xl p-8 animate-scaleIn max-w-3xl mx-auto">
       <h2 className="text-2xl font-bold text-primary-800 mb-6">Report New Issue</h2>
 
       <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Title */}
         <div>
-          <label className="block text-sm font-medium text-neutral-700 mb-2">
-            Issue Title
-          </label>
+          <label className="block text-sm font-medium text-neutral-700 mb-2">Issue Title</label>
           <input
             type="text"
             value={title}
@@ -91,10 +91,9 @@ export default function IssueForm({ onSubmit, onCancel }: IssueFormProps) {
           />
         </div>
 
+        {/* Description */}
         <div>
-          <label className="block text-sm font-medium text-neutral-700 mb-2">
-            Description
-          </label>
+          <label className="block text-sm font-medium text-neutral-700 mb-2">Description</label>
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
@@ -105,11 +104,10 @@ export default function IssueForm({ onSubmit, onCancel }: IssueFormProps) {
           />
         </div>
 
+        {/* Category & Priority */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <label className="block text-sm font-medium text-neutral-700 mb-2">
-              Category
-            </label>
+            <label className="block text-sm font-medium text-neutral-700 mb-2">Category</label>
             <select
               value={category}
               onChange={(e) => setCategory(e.target.value as Issue['category'])}
@@ -124,9 +122,7 @@ export default function IssueForm({ onSubmit, onCancel }: IssueFormProps) {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-neutral-700 mb-2">
-              Priority
-            </label>
+            <label className="block text-sm font-medium text-neutral-700 mb-2">Priority</label>
             <select
               value={priority}
               onChange={(e) => setPriority(e.target.value as Issue['priority'])}
@@ -141,10 +137,9 @@ export default function IssueForm({ onSubmit, onCancel }: IssueFormProps) {
           </div>
         </div>
 
+        {/* Location */}
         <div>
-          <label className="block text-sm font-medium text-neutral-700 mb-2">
-            Location
-          </label>
+          <label className="block text-sm font-medium text-neutral-700 mb-2">Location</label>
           <input
             type="text"
             value={location}
@@ -155,29 +150,21 @@ export default function IssueForm({ onSubmit, onCancel }: IssueFormProps) {
           />
         </div>
 
+        {/* Photos */}
         <div>
-          <label className="block text-sm font-medium text-neutral-700 mb-2">
-            Photos (optional)
-          </label>
-          <div className="flex gap-2 mb-2">
-            <input
-              type="file"
-              accept="image/*"
-              onChange={(e) => e.target.files && handleFileUpload(e.target.files[0])}
-              disabled={uploading}
-              className="flex-1 px-4 py-3 rounded-lg border border-neutral-300 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
-            />
-            <button
-              type="button"
-              onClick={() => {}}
-              className="px-6 py-3 bg-neutral-200 text-neutral-700 rounded-lg transition-all"
-            >
-              <Upload className="w-5 h-5" />
-            </button>
-          </div>
+          <label className="block text-sm font-medium text-neutral-700 mb-2">Photos (optional)</label>
+          <input
+            type="file"
+            accept="image/*"
+            onChange={(e) => e.target.files && handleFileUpload(e.target.files[0])}
+            disabled={uploading || photoUrls.length >= 5}
+            className="w-full px-4 py-3 rounded-lg border border-neutral-300 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all mb-4"
+          />
+
+          {uploading && <p className="text-sm text-blue-500 mb-2">Uploading photo...</p>}
 
           {photoUrls.length > 0 && (
-            <div className="mt-4 grid grid-cols-2 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               {photoUrls.map((url, index) => (
                 <div key={index} className="relative group">
                   <img
@@ -198,6 +185,7 @@ export default function IssueForm({ onSubmit, onCancel }: IssueFormProps) {
           )}
         </div>
 
+        {/* Buttons */}
         <div className="flex gap-4 pt-4">
           <button
             type="button"
@@ -208,7 +196,8 @@ export default function IssueForm({ onSubmit, onCancel }: IssueFormProps) {
           </button>
           <button
             type="submit"
-            className="flex-1 bg-primary hover:bg-primary-600 text-white font-semibold py-3 px-6 rounded-lg transition-all transform hover:scale-105 hover:shadow-lg flex items-center justify-center gap-2"
+            disabled={uploading}
+            className="flex-1 bg-primary hover:bg-primary-600 text-white font-semibold py-3 px-6 rounded-lg transition-all transform hover:scale-105 hover:shadow-lg flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Send className="w-5 h-5" />
             Submit Issue
@@ -218,3 +207,4 @@ export default function IssueForm({ onSubmit, onCancel }: IssueFormProps) {
     </div>
   );
 }
+
